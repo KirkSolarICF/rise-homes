@@ -1,0 +1,143 @@
+---
+
+import type {DrupalNode} from "../types";
+import {baseUrl, getFlexContent} from "../api/json";
+import {Debug} from "astro:components";
+import Image from "astro/components/Image.astro";
+
+
+// Get all published pages.
+export async function getStaticPaths() {
+  const pages = await getFlexContent();
+
+  return pages.map((page: DrupalNode) => {
+
+    return {
+      params: {
+        // Choose `path` to match the `[path]` routing value
+        path: page.path.alias.split('/').pop()
+      },
+      props: {
+        title: page.title,
+        fieldHero: page.field_hero,
+        heroImage: baseUrl + page.field_hero.field_image.field_media_image.uri.url,
+        heroImageMeta: page.field_hero.field_image.field_media_image.resourceIdObjMeta,
+        fieldMainContent: page.field_main_content,
+      }
+    }
+  });
+}
+
+const {
+  title,
+  fieldHero,
+  heroImage,
+  heroImageMeta,
+  fieldMainContent,
+} = Astro.props;
+
+---
+
+<html lang="en">
+  <head>
+    <title>
+      { title ? title : null }
+    </title>
+  </head>
+  <body>
+    <h1>{title ? title : null}</h1>
+
+    <!-- HERO -->
+    <!--<Debug hero={fieldHero} />-->
+    {
+      fieldHero.field_crumb ? (
+        <pre>{fieldHero.field_crumb}</pre>
+      ) : null
+    }
+    {
+      fieldHero.field_heading ? (
+        <h4 set:html={fieldHero.field_heading} />
+      ) : null
+    }
+    {
+      heroImage && heroImageMeta ? (
+        <Image src={heroImage} title={heroImageMeta.title} alt={heroImageMeta.alt} width={heroImageMeta.width} height={heroImageMeta.height} />
+      ) : null
+    }
+    <!-- MAIN CONTENT (flex content) -->
+    <!--<Debug main_content={fieldMainContent} />-->
+    {fieldMainContent.map(function (content: any) {
+
+      // return (
+      //   <Debug content_all={content} />
+      // );
+
+      <!--<Debug main_content={content.field_wrapped_content} />-->
+      <!-- if paragraph type is section wrapper, render the data -->
+      if (content.type === 'paragraph--section_wrapper')
+        return (
+          <div>
+            {
+              content.field_wrapped_content ? (
+                content.field_wrapped_content.map(function (item: any) {
+                  return (
+                    <div style="background: lightgray; margin: 20px; padding: 30px;">
+                      <!--<Debug item={item} />-->
+                      <p set:html={item.field_formatted_text}></p>
+                    </div>
+                  );
+                })
+              ) : null
+            }
+          </div>
+        );
+
+      <!-- if paragraph type is section wrapper, render the data -->
+      if (content.type === 'paragraph--thumb_cards')
+        return (
+          <div>
+            {
+              content.field_thumb_card.length > 0 ? (
+                content.field_thumb_card.map(function (item: any) {
+                  return (
+                    <div style="background: darkgray; margin: 20px; padding: 30px;">
+                      <!--<Debug item={item} />-->
+                      {
+                        item.field_background_color ? (
+                          <p>[Background color = {item.field_background_color}]</p>
+                        ) : null
+                      }
+                      {
+                        item.field_image ? (
+                          <img src={ baseUrl + item.field_image.field_media_svg.uri.url } alt="" />
+                        ) : null
+                      }
+                      {
+                        item.field_heading ? (
+                          <h4 set:html={item.field_heading}></h4>
+                        ) : null
+                      }
+                      {
+                        item.field_formatted_text ? (
+                          <p set:html={item.field_formatted_text.value}></p>
+                        ) : null
+                      }
+                      <!--<Debug item={item.field_button} />-->
+                      {
+                        item.field_button ? (
+                          <a href={item.field_button.url}>{item.field_button.title}</a>
+                        ) : null
+                      }
+                    </div>
+                  );
+                })
+              ) : null
+            }
+          </div>
+        );
+
+
+    })}
+
+  </body>
+</html>
